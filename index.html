@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="每日一句" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>每日一句</title>
+
+  <!-- PWA Manifest inline -->
+  <script>
+    const manifestData = {
+      name: "每日一句",
+      short_name: "每日一句",
+      description: "每天一句話，陪你走每一天",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#1a1a2e",
+      theme_color: "#1a1a2e",
+      icons: [
+        { src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%231a1a2e'/><text x='96' y='130' font-size='100' text-anchor='middle' fill='%23e8c87d'>語</text></svg>", sizes: "192x192", type: "image/svg+xml" }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifestData)], { type: "application/json" });
+    const manifestUrl = URL.createObjectURL(blob);
+    const link = document.createElement("link");
+    link.rel = "manifest";
+    link.href = manifestUrl;
+    document.head.appendChild(link);
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --bg2: #16213e;
+      --card: #0f3460;
+      --gold: #e8c87d;
+      --gold-dim: #c9a84c;
+      --text: #f0ead6;
+      --text-dim: #a89b7d;
+      --neg: #9b6b8a;
+      --neg-light: #c49ab3;
+      --pos: #6b9b7d;
+      --pos-light: #9ac4ab;
+      --border: rgba(232, 200, 125, 0.18);
+      --shadow: 0 8px 40px rgba(0,0,0,0.5);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;
+      font-family: 'Noto Serif TC', serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+    }
+
+    /* Background stars */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 20% 15%, rgba(232,200,125,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 75% 8%, rgba(232,200,125,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 45% 35%, rgba(232,200,125,0.2) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 88% 30%, rgba(232,200,125,0.35) 0%, transparent 100%),
+        radial-gradient(1px 1px at 10% 60%, rgba(232,200,125,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 60% 72%, rgba(232,200,125,0.25) 0%, transparent 100%),
+        radial-gradient(1px 1px at 30% 88%, rgba(232,200,125,0.15) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 92% 85%, rgba(232,200,125,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 55% 50%, rgba(232,200,125,0.2) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Gradient orbs */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(107,155,125,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 80% 80%, rgba(155,107,138,0.1) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 60% at 50% 50%, rgba(15,52,96,0.4) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      padding: 0 20px 32px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      padding: 40px 0 24px;
+    }
+
+    .app-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--card), #1a3a5c);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 28px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .app-title {
+      font-family: 'Ma Shan Zheng', cursive;
+      font-size: 28px;
+      color: var(--gold);
+      letter-spacing: 6px;
+      text-shadow: 0 0 30px rgba(232,200,125,0.3);
+    }
+
+    .date-display {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      margin-top: 6px;
+    }
+
+    /* Main quote card */
+    .quote-section {
+      margin-bottom: 20px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .quote-card {
+      background: linear-gradient(145deg, rgba(15,52,96,0.8), rgba(22,33,62,0.9));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.04);
+      position: relative;
+      overflow: hidden;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s ease;
+    }
+
+    .quote-card::before {
+      content: '\201C';
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      font-size: 120px;
+      font-family: 'Ma Shan Zheng', cursive;
+      color: rgba(232,200,125,0.06);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .quote-type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      width: fit-content;
+      font-weight: 600;
+    }
+    .badge-pos {
+      background: rgba(107,155,125,0.15);
+      color: var(--pos-light);
+      border: 1px solid rgba(107,155,125,0.25);
+    }
+    .badge-neg {
+      background: rgba(155,107,138,0.15);
+      color: var(--neg-light);
+      border: 1px solid rgba(155,107,138,0.25);
+    }
+    .badge-custom {
+      background: rgba(232,200,125,0.1);
+      color: var(--gold);
+      border: 1px solid rgba(232,200,125,0.2);
+    }
+
+    .quote-text {
+      font-size: 22px;
+      line-height: 1.8;
+      font-weight: 400;
+      color: var(--text);
+      flex: 1;
+      display: flex;
+      align-items: center;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+
+    .quote-author {
+      font-size: 13px;
+      color: var(--text-dim);
+      text-align: right;
+      margin-top: 20px;
+      letter-spacing: 1px;
+    }
+    .quote-author::before { content: '—— '; }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 14px;
+      font-family: 'Noto Serif TC', serif;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+      color: #1a1a2e;
+      font-weight: 700;
+      box-shadow: 0 4px 20px rgba(232,200,125,0.25);
+    }
+    .btn-primary:hover { box-shadow: 0 4px 28px rgba(232,200,125,0.4); }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.04);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+
+    /* Animation for quote change */
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .quote-animate { animation: fadeSlideIn 0.4s ease forwards; }
+
+    /* List section */
+    .list-section { margin-bottom: 24px; }
+
+    .list-container {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .list-item {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(232,200,125,0.06);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: background 0.15s;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-item:active { background: rgba(255,255,255,0.03); }
+
+    .list-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+    .dot-pos { background: var(--pos); }
+    .dot-neg { background: var(--neg); }
+    .dot-custom { background: var(--gold-dim); }
+
+    .list-text {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-dim);
+    }
+
+    .list-author {
+      font-size: 12px;
+      color: rgba(168,155,125,0.5);
+      margin-top: 2px;
+    }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      color: rgba(168,155,125,0.3);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0 0 0 4px;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: color 0.2s;
+      margin-top: 2px;
+    }
+    .btn-delete:hover { color: #c96b6b; }
+
+    /* Add form */
+    .add-section { margin-bottom: 16px; }
+
+    .add-toggle {
+      width: 100%;
+      padding: 14px;
+      background: rgba(232,200,125,0.05);
+      border: 1px dashed rgba(232,200,125,0.2);
+      border-radius: 14px;
+      color: var(--text-dim);
+      font-family: 'Noto Serif TC', serif;
+      font-size: 14px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: all 0.2s;
+    }
+    .add-toggle:hover { background: rgba(232,200,125,0.08); color: var(--gold); border-color: rgba(232,200,125,0.35); }
+
+    .add-form {
+      background: rgba(15,52,96,0.5);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .add-form.open { display: flex; }
+
+    .add-form textarea {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(232,200,125,0.15);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-family: 'Noto Serif TC', serif;
+      font-size: 15px;
+      resize: none;
+      line-height: 1.7;
+      height: 100px;
+      transition: border-color 0.2s;
+    }
+    .add-form textarea:focus {
+      outline: none;
+      border-color: rgba(232,200,125,0.4);
+    }
+    .add-form textarea::placeholder { color: rgba(168,155,125,0.4); }
+
+    .add-form input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(232,200,125,0.15);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: 'Noto Serif TC', serif;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    .add-form input:focus { outline: none; border-color: rgba(232,200,125,0.4); }
+    .add-form input::placeholder { color: rgba(168,155,125,0.4); }
+
+    .type-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .type-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-family: 'Noto Serif TC', serif;
+      font-size: 13px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+      background: rgba(255,255,255,0.03);
+      color: var(--text-dim);
+    }
+    .type-btn.selected-pos { background: rgba(107,155,125,0.18); color: var(--pos-light); border-color: rgba(107,155,125,0.3); }
+    .type-btn.selected-neg { background: rgba(155,107,138,0.18); color: var(--neg-light); border-color: rgba(155,107,138,0.3); }
+
+    .form-btns { display: flex; gap: 8px; }
+    .form-btns .btn { font-size: 13px; padding: 12px; }
+
+    /* Tabs for list view */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 4px;
+      border: 1px solid var(--border);
+    }
+    .tab {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 9px;
+      background: none;
+      color: var(--text-dim);
+      font-family: 'Noto Serif TC', serif;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 1px;
+    }
+    .tab.active {
+      background: var(--card);
+      color: var(--gold);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px;
+      color: var(--text-dim);
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: rgba(22,33,62,0.95);
+      border: 1px solid var(--border);
+      color: var(--gold);
+      padding: 12px 24px;
+      border-radius: 40px;
+      font-size: 14px;
+      letter-spacing: 1px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      backdrop-filter: blur(12px);
+      z-index: 1000;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    footer {
+      text-align: center;
+      padding: 8px 0;
+      font-size: 11px;
+      color: rgba(168,155,125,0.25);
+      letter-spacing: 2px;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--border), transparent);
+      margin: 8px 0 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="app-icon">語</div>
+    <div class="app-title">每日一句</div>
+    <div class="date-display" id="dateDisplay"></div>
+  </header>
+
+  <!-- Today's Quote -->
+  <div class="quote-section">
+    <div class="section-label">今日語錄</div>
+    <div class="quote-card" id="todayCard">
+      <div>
+        <div class="quote-type-badge" id="todayBadge"></div>
+        <div class="quote-text" id="todayText"></div>
+      </div>
+      <div class="quote-author" id="todayAuthor"></div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="drawRandom()">✦ 再抽一句</button>
+    <button class="btn btn-secondary" onclick="showToday()">回今日</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Add Quote -->
+  <div class="add-section">
+    <button class="add-toggle" id="addToggle" onclick="toggleAddForm()">＋ 新增我的語錄</button>
+    <div class="add-form" id="addForm">
+      <textarea id="newQuoteText" placeholder="輸入你想記錄的句子……"></textarea>
+      <input type="text" id="newQuoteAuthor" placeholder="作者或來源（可留空）" />
+      <div class="type-row">
+        <button class="type-btn selected-pos" id="typePosBtn" onclick="selectType('pos')">☀️ 正能量</button>
+        <button class="type-btn" id="typeNegBtn" onclick="selectType('neg')">🌙 負能量</button>
+      </div>
+      <div class="form-btns">
+        <button class="btn btn-primary" onclick="saveQuote()">儲存</button>
+        <button class="btn btn-secondary" onclick="toggleAddForm()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- All Quotes List -->
+  <div class="list-section">
+    <div class="section-label">所有語錄</div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('all')">全部</button>
+      <button class="tab" onclick="switchTab('pos')">☀️ 正能量</button>
+      <button class="tab" onclick="switchTab('neg')">🌙 負能量</button>
+      <button class="tab" onclick="switchTab('custom')">✍️ 我的</button>
+    </div>
+    <div class="list-container" id="quoteList"></div>
+  </div>
+
+  <footer>每一天都值得被記錄</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===== Built-in quotes =====
+  const builtinQuotes = [
+    { text: "不是因為看到希望才去努力，而是因為努力才能看到希望。", author: "無名", type: "pos" },
+    { text: "你比你以為的更勇敢，比你看起來的更強壯，比你認為的更聰明。", author: "小熊維尼", type: "pos" },
+    { text: "生活不必完美，但必須真實。", author: "無名", type: "pos" },
+    { text: "每一個你不喜歡的當下，都是你努力改變的起點。", author: "無名", type: "pos" },
+    { text: "慢慢來，比較快。", author: "無名", type: "pos" },
+    { text: "你今天的堅持，是明天的理所當然。", author: "無名", type: "pos" },
+    { text: "失敗不是跌倒，而是拒絕站起來。", author: "無名", type: "pos" },
+    { text: "有時候，世界就是不公平的，而我們唯一能做的，是決定如何回應它。", author: "無名", type: "neg" },
+    { text: "疲憊不是懦弱，是你已經盡力的證明。", author: "無名", type: "neg" },
+    { text: "不是每件事都有意義，也不是每份付出都有回報。", author: "無名", type: "neg" },
+    { text: "有些人離開，不是你的錯，只是緣分到了。", author: "無名", type: "neg" },
+    { text: "放棄某些事，有時候才是最勇敢的選擇。", author: "無名", type: "neg" },
+    { text: "孤獨是一種你遲早要學會享受的能力。", author: "無名", type: "neg" },
+    { text: "不是所有的付出都值得，但不付出，你什麼都不知道。", author: "無名", type: "neg" },
+    { text: "接受自己的平凡，是一種很深的修行。", author: "無名", type: "neg" },
+  ];
+
+  // ===== State =====
+  let allQuotes = [];
+  let currentTab = 'all';
+  let selectedType = 'pos';
+  let currentQuote = null;
+  let todayQuote = null;
+
+  // ===== Init =====
+  function init() {
+    // Load custom quotes
+    const saved = localStorage.getItem('myQuotes');
+    const customQuotes = saved ? JSON.parse(saved) : [];
+    allQuotes = [...builtinQuotes, ...customQuotes.map(q => ({ ...q, custom: true }))];
+
+    // Date display
+    const now = new Date();
+    const days = ['日','一','二','三','四','五','六'];
+    document.getElementById('dateDisplay').textContent =
+      `${now.getFullYear()} 年 ${now.getMonth()+1} 月 ${now.getDate()} 日　星期${days[now.getDay()]}`;
+
+    // Today's fixed quote (deterministic by date)
+    const dayKey = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
+    const savedDay = localStorage.getItem('todayKey');
+    const savedTodayIdx = localStorage.getItem('todayIdx');
+
+    let todayIdx;
+    if (savedDay === dayKey && savedTodayIdx !== null) {
+      todayIdx = parseInt(savedTodayIdx);
+      if (todayIdx >= allQuotes.length) todayIdx = 0;
+    } else {
+      // Seed by date
+      const seed = now.getFullYear() * 10000 + (now.getMonth()+1) * 100 + now.getDate();
+      todayIdx = seed % allQuotes.length;
+      localStorage.setItem('todayKey', dayKey);
+      localStorage.setItem('todayIdx', todayIdx);
+    }
+
+    todayQuote = allQuotes[todayIdx];
+    showQuote(todayQuote);
+    renderList();
+  }
+
+  function showToday() {
+    showQuote(todayQuote);
+  }
+
+  function showQuote(q) {
+    currentQuote = q;
+    const card = document.getElementById('todayCard');
+    const badge = document.getElementById('todayBadge');
+    const textEl = document.getElementById('todayText');
+    const authorEl = document.getElementById('todayAuthor');
+
+    // Animate
+    card.classList.remove('quote-animate');
+    void card.offsetWidth;
+    card.classList.add('quote-animate');
+
+    badge.className = 'quote-type-badge';
+    if (q.custom) {
+      badge.classList.add('badge-custom');
+      badge.textContent = '✍️ 我的語錄';
+    } else if (q.type === 'pos') {
+      badge.classList.add('badge-pos');
+      badge.textContent = '☀️ 正能量';
+    } else {
+      badge.classList.add('badge-neg');
+      badge.textContent = '🌙 負能量';
+    }
+
+    textEl.textContent = q.text;
+    authorEl.textContent = q.author && q.author !== '無名' && q.author !== '' ? q.author : '';
+    if (!authorEl.textContent) authorEl.style.display = 'none';
+    else authorEl.style.display = '';
+  }
+
+  function drawRandom() {
+    let pool = allQuotes;
+    if (pool.length > 1) {
+      pool = pool.filter(q => q !== currentQuote);
+    }
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    showQuote(q);
+  }
+
+  // ===== List =====
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach((btn, i) => {
+      btn.classList.toggle('active', ['all','pos','neg','custom'][i] === tab);
+    });
+    renderList();
+  }
+
+  function renderList() {
+    const container = document.getElementById('quoteList');
+    let filtered = allQuotes;
+
+    if (currentTab === 'pos') filtered = allQuotes.filter(q => q.type === 'pos' && !q.custom);
+    else if (currentTab === 'neg') filtered = allQuotes.filter(q => q.type === 'neg' && !q.custom);
+    else if (currentTab === 'custom') filtered = allQuotes.filter(q => q.custom);
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="empty-state">這裡還沒有語錄</div>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map((q, i) => {
+      const realIdx = allQuotes.indexOf(q);
+      const dotClass = q.custom ? 'dot-custom' : (q.type === 'pos' ? 'dot-pos' : 'dot-neg');
+      const deleteBtn = q.custom
+        ? `<button class="btn-delete" onclick="deleteQuote(${realIdx})" title="刪除">×</button>`
+        : '';
+      const authorStr = q.author && q.author !== '無名' && q.author !== ''
+        ? `<div class="list-author">${q.author}</div>` : '';
+      return `
+        <div class="list-item">
+          <div class="list-dot ${dotClass}"></div>
+          <div class="list-text">
+            <div onclick="showQuote(allQuotes[${realIdx}])" style="cursor:pointer">${q.text}</div>
+            ${authorStr}
+          </div>
+          ${deleteBtn}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ===== Add =====
+  function toggleAddForm() {
+    const form = document.getElementById('addForm');
+    const toggle = document.getElementById('addToggle');
+    const isOpen = form.classList.contains('open');
+    form.classList.toggle('open');
+    toggle.style.display = isOpen ? '' : 'none';
+    if (!isOpen) {
+      document.getElementById('newQuoteText').value = '';
+      document.getElementById('newQuoteAuthor').value = '';
+      selectType('pos');
+    }
+  }
+
+  function selectType(type) {
+    selectedType = type;
+    document.getElementById('typePosBtn').className = 'type-btn' + (type === 'pos' ? ' selected-pos' : '');
+    document.getElementById('typeNegBtn').className = 'type-btn' + (type === 'neg' ? ' selected-neg' : '');
+  }
+
+  function saveQuote() {
+    const text = document.getElementById('newQuoteText').value.trim();
+    if (!text) { showToast('請輸入句子內容'); return; }
+
+    const author = document.getElementById('newQuoteAuthor').value.trim() || '我';
+    const newQ = { text, author, type: selectedType, custom: true };
+
+    const saved = localStorage.getItem('myQuotes');
+    const customList = saved ? JSON.parse(saved) : [];
+    customList.push({ text, author, type: selectedType });
+    localStorage.setItem('myQuotes', JSON.stringify(customList));
+
+    allQuotes.push(newQ);
+    toggleAddForm();
+    document.getElementById('addToggle').style.display = '';
+    switchTab('custom');
+    showToast('已儲存 ✦');
+  }
+
+  function deleteQuote(idx) {
+    const q = allQuotes[idx];
+    if (!q || !q.custom) return;
+
+    allQuotes.splice(idx, 1);
+
+    // Update localStorage
+    const customList = allQuotes.filter(x => x.custom).map(({ text, author, type }) => ({ text, author, type }));
+    localStorage.setItem('myQuotes', JSON.stringify(customList));
+
+    // Update today's index if needed
+    const savedTodayIdx = parseInt(localStorage.getItem('todayIdx') || '0');
+    if (savedTodayIdx >= allQuotes.length) {
+      localStorage.setItem('todayIdx', 0);
+      todayQuote = allQuotes[0];
+    }
+
+    if (currentQuote === q) showQuote(todayQuote);
+    renderList();
+    showToast('已刪除');
+  }
+
+  // ===== Toast =====
+  let toastTimer;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  init();
+</script>
+</body>
+</html>
